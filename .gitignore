@@ -1,3 +1,11 @@
-build
+# vim stuff
+*~
+Session.vim
+*.swp
+*.o
+*.leaklog
+*.old
+build/
+notes.txt
 release
 generated
