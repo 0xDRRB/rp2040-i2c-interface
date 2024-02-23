@@ -9,13 +9,7 @@
 #include <string.h>
 
 #include "bsp/board.h"
-#include "hardware/adc.h"
 #include "hardware/i2c.h"
-#include "hardware/irq.h"
-#include "hardware/pwm.h"
-#include "hardware/structs/watchdog.h"
-#include "hardware/uart.h"
-#include "hardware/watchdog.h"
 #include "kernel_i2c_flags.h"
 #include "pico/bootrom.h"
 #include "pico/stdlib.h"
@@ -25,9 +19,6 @@
 #define I2C_INST        i2c1
 #define I2C_SDA            2
 #define I2C_SCL            3
-#define PTINY2040_RLED    18
-#define PTINY2040_GLED    19
-#define PTINY2040_BLED    20
 
 // Invoked when device is mounted
 void tud_mount_cb(void) {}
@@ -59,12 +50,6 @@ const unsigned long i2c_func = I2C_FUNC_I2C | I2C_FUNC_SMBUS_EMUL;
 static uint8_t i2c_state = STATUS_IDLE;
 
 uint8_t i2c_data[1024] = {0};
-
-/*uint8_t buffer[256] = {0};
-  void debug_print(const char* buffer) {
-  tud_cdc_n_write(0, buffer, strlen(buffer));
-  tud_cdc_n_write_flush(0);
-}*/
 
 bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const* request)
 {
@@ -98,13 +83,15 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
 				if (stage != CONTROL_STAGE_SETUP && stage != CONTROL_STAGE_DATA) return true;
 				bool nostop = !(request->bRequest & CMD_I2C_END);
 
-				//sprintf(buffer, "%s i2c %s at 0x%02x, len = %d, nostop = %d\r\n", (stage != CONTROL_STAGE_SETUP) ? "[D]" : "[S]", (request->wValue & I2C_M_RD)?"rd":"wr", request->wIndex, request->wLength, nostop);
-				//debug_print(buffer);
-
 				if (request->wLength > sizeof(i2c_data)) {
 					return false;  // Prevent buffer overflow in case host sends us an impossible request
 				}
 
+#if defined PICO_DEFAULT_LED_PIN_INVERTED && PICO_DEFAULT_LED_PIN_INVERTED >= 1
+				gpio_put(PICO_DEFAULT_LED_PIN, 0);
+#else
+				gpio_put(PICO_DEFAULT_LED_PIN, 1);
+#endif
 				if (stage == CONTROL_STAGE_SETUP) {  // Before transfering data
 					if (request->wValue & I2C_M_RD) {
 						// Reading from I2C device
@@ -136,6 +123,11 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
 						}
 					}
 				}
+#if defined PICO_DEFAULT_LED_PIN_INVERTED && PICO_DEFAULT_LED_PIN_INVERTED >= 1
+				gpio_put(PICO_DEFAULT_LED_PIN, 1);
+#else
+				gpio_put(PICO_DEFAULT_LED_PIN, 0);
+#endif
 
 				return true;
 			}
@@ -162,17 +154,27 @@ int main(void)
 	board_init();
 	tusb_init();
 
-	gpio_init(PTINY2040_RLED);
-	gpio_set_dir(PTINY2040_RLED, GPIO_OUT);
-	gpio_put(PTINY2040_RLED, 1);
+#ifdef PIMORONI_TINY2040
+	gpio_init(TINY2040_LED_R_PIN);
+	gpio_set_dir(TINY2040_LED_R_PIN, GPIO_OUT);
+	gpio_put(TINY2040_LED_R_PIN, 1);
 
-	gpio_init(PTINY2040_GLED);
-	gpio_set_dir(PTINY2040_GLED, GPIO_OUT);
-	gpio_put(PTINY2040_GLED, 1);
+	gpio_init(TINY2040_LED_G_PIN);
+	gpio_set_dir(TINY2040_LED_G_PIN, GPIO_OUT);
+	gpio_put(TINY2040_LED_G_PIN, 1);
 
-	gpio_init(PTINY2040_BLED);
-	gpio_set_dir(PTINY2040_BLED, GPIO_OUT);
-	gpio_put(PTINY2040_BLED, 1);
+	gpio_init(TINY2040_LED_B_PIN);
+	gpio_set_dir(TINY2040_LED_B_PIN, GPIO_OUT);
+	gpio_put(TINY2040_LED_B_PIN, 1);
+#else
+	gpio_init(PICO_DEFAULT_LED_PIN);
+	gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+#if defined PICO_DEFAULT_LED_PIN_INVERTED && PICO_DEFAULT_LED_PIN_INVERTED >= 1
+	gpio_put(PICO_DEFAULT_LED_PIN, 1);
+#else
+	gpio_put(PICO_DEFAULT_LED_PIN, 0);
+#endif
+#endif
 
 	gpio_init(I2C_SDA);
 	gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);

@@ -9,6 +9,7 @@ set(NAME i2c_adapter)
 
 # Board type
 set(PICO_BOARD pimoroni_tiny2040)
+#set(PICO_BOARD pico)
 
 project(${NAME} C CXX ASM)
 set(CMAKE_C_STANDARD 11)
@@ -27,16 +28,9 @@ target_include_directories(${NAME} PUBLIC
 target_link_libraries(${NAME}
     pico_stdlib
     pico_unique_id
-    hardware_watchdog
-    hardware_flash
-    hardware_uart
-    hardware_pio
-    hardware_pwm
-    hardware_adc
     hardware_i2c
     tinyusb_device
     tinyusb_board
-    cmsis_core
 )
 
 pico_add_extra_outputs(${NAME})
